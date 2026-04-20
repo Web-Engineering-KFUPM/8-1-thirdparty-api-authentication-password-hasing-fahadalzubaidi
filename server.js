@@ -320,7 +320,54 @@ app.post("/login", async (req, res) => {
 // GET /weather?city=Riyadh
 // =========================
 app.get("/weather", async (req, res) => {
-  // Implement logic here based on the TODO 3.
+  try {
+    // 1) Read Authorization header:
+    const auth = req.headers.authorization;
+    if (!auth) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+
+    // 2) Extract token:
+    const token = auth.split(" ")[1];
+
+    // 3) Verify token:
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // 4) Read city from query string:
+    const city = req.query.city;
+    if (!city) {
+      return res.status(400).json({ error: "City required" });
+    }
+
+    // 5) Prepare external weather API URL:
+    const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+
+    // 6) Use fetch() to call API:
+    const weatherResponse = await fetch(url);
+    if (!weatherResponse.ok) {
+      return res.status(500).json({ error: "Error from weather API" });
+    }
+
+    // 7) Parse JSON:
+    const data = await weatherResponse.json();
+
+    // 8) Return structured weather data:
+    return res.json({
+      city,
+      temp: data.temperature,
+      description: data.description,
+      wind: data.wind,
+      raw: data // full API response if students want to inspect
+    });
+  } catch (err) {
+    // 9) If something crashes inside try block:
+    console.error("Weather fetch error:", err);
+    return res.status(500).json({ error: "Server error during weather fetch" });
+  }
 });
 
 // Start server
